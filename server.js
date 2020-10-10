@@ -4,6 +4,7 @@ const port=3000;
 const bodyParser = require("body-parser");
 const mariadb=require('mariadb');
 const {check, validationResult} = require('express-validator');
+
 const cors= require('cors');
 const swaggerJsdoc= require('swagger-jsdoc');
 const swaggerUi= require('swagger-ui-express');
@@ -22,8 +23,8 @@ const options = {
   };
 
 const specs = swaggerJsdoc(options);
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(specs));
 app.use(cors())
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -42,7 +43,7 @@ const cache = require('memory-cache');
     let memCache = new cache.Cache();
     let cacheMiddleware = (duration) => {
         return (req, res, next) => {
-            let key =  '_express_' + req.originalUrl || req.url
+            let key =  'express' + req.originalUrl || req.url
             let cacheContent = memCache.get(key);
             if(cacheContent){
                 res.send( cacheContent );
@@ -62,14 +63,13 @@ const cache = require('memory-cache');
  * @swagger
  * /companies:
  *    get:
- *      description: Return all records from company table
+ *      description: Returns all the records from the Company table
  *      produces:
  *          - application/json
  *      responses:
  *          200:
- *              description: Object containing arrays of company
+ *              description: JSON bbject containing array of company objects
  */
-
 app.get('/companies',cacheMiddleware(30), async (req,res)=>{
 let conn;
 try{
@@ -91,14 +91,13 @@ if (conn) return conn.end();
  * @swagger
  * /agents:
  *    get:
- *      description: Return all records from Agents table
+ *      description: Returns all the records from the Agents table
  *      produces:
  *          - application/json
  *      responses:
  *          200:
- *              description: Object containing array of Agents objects
+ *              description: JSON bbject containing array of Agents objects
  */
-
 app.get('/agents',cacheMiddleware(30), async(req,res)=>{
         let conn;
         try{
@@ -127,7 +126,6 @@ app.get('/agents',cacheMiddleware(30), async(req,res)=>{
  *          200:
  *              description: Object containing array of foods objects
  */
-
 app.get('/foods',cacheMiddleware(30), async(req,res)=>{
         let conn;
         try{
@@ -145,7 +143,7 @@ app.get('/foods',cacheMiddleware(30), async(req,res)=>{
 /**
  * @swagger
  * definitions:
- *   Companies:
+ *   Company:
  *     properties:
  *       COMPANY_ID:
  *         type: string
@@ -158,24 +156,21 @@ app.get('/foods',cacheMiddleware(30), async(req,res)=>{
  * @swagger
  * /companies:
  *    post:
- *      description: add record to company table
+ *      description: Add a record to the company table
  *      produces:
  *          - application/json
  *      responses:
  *          200:
- *              description: Added data to company table
- *          422:
- *              description: Errors in input object
+ *              description: Added data to the company table
  *      parameters:
- *          - name: Companies
- *            description: company object
+ *          - name: Company
+ *            description: the company object
  *            in: body
  *            required: true
  *            schema:
  *              $ref: '#/definitions/Company'
  *
  */
-
 app.post('/companies',
 		[ check('COMPANY_ID','Company ID is required').not().isEmpty().trim(),
 		  check('COMPANY_NAME').trim(),
@@ -192,11 +187,10 @@ app.post('/companies',
     try{
         conn= await pool.getConnection();
 
-const result= await pool.query(`INSERT INTO company (COMPANY_ID, COMPANY_NAME, COMPANY_CITY) VALUES ('${COMPANY_ID}', '${COMPANY_NAME}', '${COMPANY_CITY}')`);
+        const result= await pool.query(`INSERT INTO company (COMPANY_ID, COMPANY_NAME, COMPANY_CITY) VALUES ('${COMPANY_ID}', '${COMPANY_NAME}', '${COMPANY_CITY}')`);
         console.log(result)
-	return res.status(200).send('Record Inserted Successfully');
-
-}
+	    res.status(200).send('Record Inserted Successfully');
+    }
 catch(error) {
          console.error(error.message)
         res.status(500).send('Server Error');
@@ -207,6 +201,29 @@ finally{
 
 });
 
+/**
+ * @swagger
+ * /companies/{id}:
+ *    put:
+ *      description: Add or Update a record from companies table
+ *      produces:
+ *          - application/json
+ *      responses:
+ *          200:
+ *              description: Added or Updated data to company table
+ *      parameters:
+ *          - name: id
+ *            in: path
+ *            required: true
+ *            type: string
+ *          - name: Company
+ *            description: company object
+ *            in: body
+ *            required: true
+ *            schema:
+ *              $ref: '#/definitions/Company'
+ *
+ */
 app.put('/companies/:id', 
 	[ check('COMPANY_NAME','Company NAME is required').not().isEmpty().trim(),
           check('COMPANY_CITY','Company CITY is Required').not().isEmpty().trim()],
@@ -226,8 +243,7 @@ app.put('/companies/:id',
 	if (result.affectedRows==0){
 	    const result= await pool.query(`INSERT INTO company (COMPANY_ID, COMPANY_NAME, COMPANY_CITY) VALUES ('${id}', '${COMPANY_NAME}', '${COMPANY_CITY}')`)
 	}
-        console.log(result)
-
+    res.status(200).send('Record Updated Successfully');
 }
 catch(error) {
          console.error(error.message)
@@ -239,6 +255,31 @@ finally{
 
 });
 
+/**
+ * @swagger
+ * /companies/{id}:
+ *    patch:
+ *      description: Update a record from company table
+ *      produces:
+ *          - application/json
+ *      responses:
+ *          200:
+ *              description: Updated data from companytable
+ *          404:
+ *              description: No record for given ItemId
+ *      parameters:
+ *          - name: id
+ *            in: path
+ *            required: true
+ *            type: string
+ *          - name: Company
+ *            description: company object
+ *            in: body
+ *            required: true
+ *            schema:
+ *              $ref: '#/definitions/Company'
+ *
+ */
 app.patch('/companies/:id',
     async (req,res)=>{
     const errors = validationResult(req);
@@ -276,6 +317,23 @@ finally{
 }
 });
 
+/**
+ * @swagger
+ * /companies/{id}:
+ *    delete:
+ *      description: Delete the record in the company table
+ *      produces:
+ *          - application/json
+ *      responses:
+ *          200:
+ *              description: Successfully deleted record from table
+ *      parameters:
+ *          - name: id
+ *            in: path
+ *            required: true
+ *            type: string
+ *
+ */
 app.delete('/companies/:id', async (req,res)=>{
     let conn;
     const id = req.params.id
